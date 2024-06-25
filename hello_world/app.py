@@ -1,42 +1,41 @@
+import boto3
 import json
+import os
 
-# import requests
-
+def get_db_credentials():
+    try:
+        client = boto3.client('secretsmanager')
+        secret_name = os.environ['RDS_SECRET_NAME']
+        secret_value = client.get_secret_value(SecretId=secret_name)
+        return json.loads(secret_value['SecretString'])
+    except Exception as e:
+        print(f"Error fetching secret: {e}")
+        raise e
 
 def lambda_handler(event, context):
-    """Sample pure Lambda function
+    try:
+        # Obtener credenciales de la base de datos desde Secrets Manager
+        db_credentials = get_db_credentials()
 
-    Parameters
-    ----------
-    event: dict, required
-        API Gateway Lambda Proxy Input Format
+        # Usar las credenciales para conectarse a la base de datos o cualquier otra lógica
+        db_username = db_credentials['username']
+        db_password = db_credentials['password']
+        db_endpoint = os.environ['RDS_ENDPOINT']
+        db_name = os.environ['RDS_DB_NAME']
 
-        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+        # Aquí puedes añadir la lógica para conectar a la base de datos o cualquier otra funcionalidad
+        # Ejemplo:
+        # connection = create_db_connection(db_endpoint, db_name, db_username, db_password)
 
-    context: object, required
-        Lambda Context runtime methods and attributes
-
-        Context doc: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
-
-    Returns
-    ------
-    API Gateway Lambda Proxy Output Format: dict
-
-        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
-    """
-
-    # try:
-    #     ip = requests.get("http://checkip.amazonaws.com/")
-    # except requests.RequestException as e:
-    #     # Send some context about this error to Lambda Logs
-    #     print(e)
-
-    #     raise e
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "message": "hello world",
-            # "location": ip.text.replace("\n", "")
-        }),
-    }
+        return {
+            'statusCode': 200,
+            'body': json.dumps('Hello from Lambda!'),
+            'db_username': db_username,
+            'db_endpoint': db_endpoint
+        }
+    except Exception as e:
+        print(f"Error in lambda_handler: {e}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps('Internal server error FROM LAMBDA')
+        }

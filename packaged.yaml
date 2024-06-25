@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'ProjectSaes
+
+  Sample SAM Template for ProjectSaes
+
+  '
+Globals:
+  Function:
+    Timeout: 3
+    MemorySize: 128
+Resources:
+  HelloWorldFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://bucketsaes/349d010cb58245a55f93f82f0cab4144
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Architectures:
+      - x86_64
+      Events:
+        HelloWorld:
+          Type: Api
+          Properties:
+            Path: /hello
+            Method: get
+      Environment:
+        Variables:
+          RDS_SECRET_NAME: secretsSAES
+          RDS_ENDPOINT: mydbinstance.abcde12345.us-east-1.rds.amazonaws.com
+          RDS_DB_NAME: saesdb
+          RDS_USERNAME: admin
+      Policies:
+      - Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - rds-db:connect
+          Resource:
+            Fn::Sub: arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser/${RDS_DB_NAME}/${RDS_USERNAME}
+        - Effect: Allow
+          Action:
+          - secretsmanager:GetSecretValue
+          Resource:
+            Fn::Sub: arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${RDS_SECRET_NAME}*
+        - Effect: Allow
+          Action:
+          - lambda:InvokeFunction
+          Resource: '*'
+        - Effect: Allow
+          Action:
+          - apigateway:POST
+          - apigateway:GET
+          - apigateway:PUT
+          - apigateway:DELETE
+          Resource: '*'
+        - Effect: Allow
+          Action:
+          - cognito-idp:AdminCreateUser
+          - cognito-idp:AdminDeleteUser
+          - cognito-idp:AdminGetUser
+          - cognito-idp:AdminUpdateUserAttributes
+          Resource:
+            Fn::Sub: arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/us-east-1_bUmZ4j6DU
+    Metadata:
+      SamResourceId: HelloWorldFunction
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: saesusers
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      Schema:
+      - Name: email
+        Required: true
+        Mutable: true
+      - Name: name
+        Required: true
+        Mutable: true
+      UsernameAttributes:
+      - email
+      AutoVerifiedAttributes:
+      - email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+    Metadata:
+      SamResourceId: CognitoUserPool
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: saesclient
+      UserPoolId:
+        Ref: CognitoUserPool
+      GenerateSecret: false
+    Metadata:
+      SamResourceId: CognitoUserPoolClient
+Outputs:
+  HelloWorldApi:
+    Description: API Gateway endpoint URL for Prod stage for Hello World function
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/
+  HelloWorldFunction:
+    Description: Hello World Lambda Function ARN
+    Value:
+      Fn::GetAtt:
+      - HelloWorldFunction
+      - Arn
+  HelloWorldFunctionIamRole:
+    Description: Implicit IAM Role created for Hello World function
+    Value:
+      Fn::GetAtt:
+      - HelloWorldFunctionRole
+      - Arn

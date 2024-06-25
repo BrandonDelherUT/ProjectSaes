@@ -17,9 +17,13 @@ lint = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
+s3_prefix = "ProjectSaes"
+region = "us-east-1"
+image_repositories = []
 
 [default.package.parameters]
-resolve_s3 = true
+s3_bucket = "bucketsaes"
+output_template_file = "packaged.yaml"
 
 [default.sync.parameters]
 watch = true
