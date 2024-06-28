@@ -3,103 +3,209 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   ProjectSaes
 
-  Sample SAM Template for ProjectSaes
-
 Globals:
   Function:
-    Timeout: 3
-    MemorySize: 128
+    Timeout: 10
+    MemorySize: 256
 
 Resources:
-  HelloWorldFunction:
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - secretsmanager:GetSecretValue
+                Resource: arn:aws:logs:*:*:*
+        - PolicyName: RDSAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds-db:connect
+                Resource: "*"
+        - PolicyName: CognitoAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminAddUserToGroup
+                  - cognito-idp:AdminSetUserPassword
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:AdminListGroupsForUser
+                  - cognito-idp:InitiateAuth
+                Resource: arn:aws:cognito-idp:us-east-1:654654356618:userpool/us-east-1_bUmZ4j6DU
+
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ProjectSaesApi
+      StageName: Prod
+
+  CreateUserFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: hello_world/
+      CodeUri: create_user/
       Handler: app.lambda_handler
       Runtime: python3.9
-      Architectures:
-        - x86_64
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        CreateUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /users
+            Method: post
       Environment:
         Variables:
           RDS_SECRET_NAME: secretsSAES
-          RDS_ENDPOINT: mydbinstance.abcde12345.us-east-1.rds.amazonaws.com
-          RDS_DB_NAME: saesdb
+          REGION_NAME: us-east-1
+          USER_POOL_ID: us-east-1_bUmZ4j6DU
+          RDS_DB_NAME: user_management
+          RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
           RDS_USERNAME: admin
+          RDS_PASSWORD: admin123
+
+  GetUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_user/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
       Events:
-        HelloWorld:
+        GetUser:
           Type: Api
           Properties:
-            Path: /hello
+            RestApiId: !Ref ApiGateway
+            Path: /users/{id}
             Method: get
-      Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - rds-db:connect
-              Resource: arn:aws:rds:us-east-1:654654356618:db:saesdb
-            - Effect: Allow
-              Action:
-                - secretsmanager:GetSecretValue
-              Resource: arn:aws:kms:us-east-1:654654356618:key/3a580651-a429-4686-94c0-17a86fe6ac96
-            - Effect: Allow
-              Action:
-                - lambda:InvokeFunction
-              Resource: "*"
-            - Effect: Allow
-              Action:
-                - apigateway:POST
-                - apigateway:GET
-                - apigateway:PUT
-                - apigateway:DELETE
-              Resource: "*"
-            - Effect: Allow
-              Action:
-                - cognito-idp:AdminCreateUser
-                - cognito-idp:AdminDeleteUser
-                - cognito-idp:AdminGetUser
-                - cognito-idp:AdminUpdateUserAttributes
-              Resource: arn:aws:cognito-idp:us-east-1:654654356618:userpool/us-east-1_bUmZ4j6DU
+      Environment:
+        Variables:
+          RDS_SECRET_NAME: secretsSAES
+          REGION_NAME: us-east-1
+          RDS_DB_NAME: user_management
 
-  CognitoUserPool:
-    Type: AWS::Cognito::UserPool
+  UpdateUserFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      UserPoolName: saesusers
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 8
-          RequireLowercase: true
-          RequireNumbers: true
-          RequireSymbols: true
-          RequireUppercase: true
-      Schema:
-        - Name: email
-          Required: true
-          Mutable: true
-        - Name: name
-          Required: true
-          Mutable: true
-      UsernameAttributes:
-        - email
-      AutoVerifiedAttributes:
-        - email
-      AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true
+      CodeUri: update_user/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        UpdateUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /users/{id}
+            Method: put
+      Environment:
+        Variables:
+          RDS_SECRET_NAME: secretsSAES
+          REGION_NAME: us-east-1
+          RDS_DB_NAME: user_management
 
-  CognitoUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
+  DeleteUserFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      ClientName: saesclient
-      UserPoolId: !Ref CognitoUserPool
-      GenerateSecret: false
+      CodeUri: delete_user/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        DeleteUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /users/{id}
+            Method: delete
+      Environment:
+        Variables:
+          RDS_SECRET_NAME: secretsSAES
+          REGION_NAME: us-east-1
+          RDS_DB_NAME: user_management
+
+  LoginUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: login_user/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        LoginUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /login
+            Method: post
+      Environment:
+        Variables:
+          REGION_NAME: us-east-1
+          USER_POOL_ID: us-east-1_bUmZ4j6DU
+          CLIENT_ID: g9uctiai3rvu4g541qfvkn6q8
+
+  ProfileUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: profile_user/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ProfileUser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /profile
+            Method: post
+      Environment:
+        Variables:
+          REGION_NAME: us-east-1
+          USER_POOL_ID: us-east-1_bUmZ4j6DU
+
+  ProfileAdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: profile_admin/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ProfileAdmin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: /admin/profile
+            Method: post
+      Environment:
+        Variables:
+          REGION_NAME: us-east-1
+          USER_POOL_ID: us-east-1_bUmZ4j6DU
 
 Outputs:
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+  ApiUrl:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+  LambdaExecutionRoleArn:
+    Description: "Lambda Execution Role ARN"
+    Value: !GetAtt LambdaExecutionRole.Arn
