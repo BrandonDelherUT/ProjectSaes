@@ -82,7 +82,6 @@ def lambda_handler(event, __):
             "body": json.dumps({"error": "Failed to connect to the database."})
         }
 
-
 def get_secret(secret_name: str, region_name: str) -> Dict[str, str]:
     """
     Retrieves the secret value from AWS Secrets Manager.

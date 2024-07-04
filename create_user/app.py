@@ -10,7 +10,7 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-def lambda_handler(event, __):
+def lambda_handler(event, context):
     body_parameters = json.loads(event["body"])
     email = body_parameters.get('email')
     username = email  # Usar el correo electrónico como nombre de usuario
@@ -93,15 +93,19 @@ def lambda_handler(event, __):
         }
 
 def insert_db(username, password, email, role):
-    query = f"INSERT INTO users (username, password, email, role) VALUES ('{username}', '{password}', '{email}', '{role}')"
+    query = f"INSERT INTO users (username, password, email, role) VALUES (%s, %s, %s, %s)"
     connection = connect_to_db(
         host=os.environ['RDS_ENDPOINT'],
         user=os.environ['RDS_USERNAME'],
         password=os.environ['RDS_PASSWORD'],
         database=os.environ['RDS_DB_NAME']
     )
-    execute_query(connection, query)
-    close_connection(connection)
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query, (username, password, email, role))
+            connection.commit()
+    finally:
+        close_connection(connection)
 
 def generate_temporary_password(length=12):
     """Genera una contraseña temporal segura"""
