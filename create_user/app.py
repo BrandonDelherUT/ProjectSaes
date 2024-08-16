@@ -11,6 +11,12 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 def lambda_handler(event, context):
+    headers = {
+        'Access-Control-Allow-Origin': '*',  # Permite todas las fuentes
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'OPTIONS,POST',  # Métodos permitidos
+    }
+
     body_parameters = json.loads(event["body"])
     email = body_parameters.get('email')
     username = email  # Usar el correo electrónico como nombre de usuario
@@ -20,6 +26,7 @@ def lambda_handler(event, context):
     if email is None:
         return {
             "statusCode": 400,
+            "headers": headers,
             "body": json.dumps({"message": "Missing input parameters"})
         }
 
@@ -36,6 +43,7 @@ def lambda_handler(event, context):
             )
             return {
                 'statusCode': 400,
+                'headers': headers,
                 'body': json.dumps({"error_message": "User account already exists"})
             }
         except client.exceptions.UserNotFoundException:
@@ -76,6 +84,7 @@ def lambda_handler(event, context):
 
         return {
             'statusCode': 200,
+            'headers': headers,
             'body': json.dumps({"message": "User created successfully, verification email sent."})
         }
 
@@ -83,12 +92,14 @@ def lambda_handler(event, context):
         logging.error(f"ClientError: {e}")
         return {
             'statusCode': 400,
+            'headers': headers,
             'body': json.dumps({"error_message": e.response['Error']['Message']})
         }
     except Exception as e:
         logging.error(f"Exception: {e}")
         return {
             'statusCode': 500,
+            'headers': headers,
             'body': json.dumps({"error_message": str(e)})
         }
 
@@ -109,7 +120,7 @@ def insert_db(username, password, email, role):
 
 def generate_temporary_password(length=12):
     """Genera una contraseña temporal segura"""
-    special_characters = '^$*.[]{}()?-"!@#%&/\\,><\':;|_~`+= '
+    special_characters = '^$*.[]{}()?-"!@#%&/\\,><\':;|_~+= '
     characters = string.ascii_letters + string.digits + special_characters
 
     while True:
@@ -124,3 +135,4 @@ def generate_temporary_password(length=12):
 
         if has_digit and has_upper and has_lower and has_special and len(password) >= 8:
             return password
+

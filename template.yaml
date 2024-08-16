@@ -66,6 +66,10 @@ Resources:
           CognitoAuthorizer:
             UserPoolArn: arn:aws:cognito-idp:us-east-1:654654356618:userpool/us-east-1_bUmZ4j6DU
             IdentitySource: method.request.header.Authorization
+      Cors:
+        AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
 
   CreateUserFunction:
     Type: AWS::Serverless::Function
@@ -89,7 +93,7 @@ Resources:
           RDS_DB_NAME: user_management
           RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
           RDS_USERNAME: admin
-          RDS_PASSWORD: admin123
+          RDS_PASSWORD: SAESdb2024.
 
   GetUserFunction:
     Type: AWS::Serverless::Function

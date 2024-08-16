@@ -7,6 +7,12 @@ def lambda_handler(event, context):
     client = boto3.client('cognito-idp', region_name=os.environ['REGION_NAME'])
     client_id = os.environ['CLIENT_ID']
 
+    cors_headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+    }
+
     try:
         body_parameters = json.loads(event["body"])
         username = body_parameters.get('username')
@@ -16,6 +22,7 @@ def lambda_handler(event, context):
         if not username or not password:
             return {
                 'statusCode': 400,
+                'headers': cors_headers,
                 'body': json.dumps({"error_message": "Username and password are required"})
             }
 
@@ -47,6 +54,7 @@ def lambda_handler(event, context):
 
         return {
             'statusCode': 200,
+            'headers': cors_headers,
             'body': json.dumps({
                 'id_token': id_token,
                 'access_token': access_token,
@@ -57,10 +65,12 @@ def lambda_handler(event, context):
     except ClientError as e:
         return {
             'statusCode': 400,
+            'headers': cors_headers,
             'body': json.dumps({"error_message": e.response['Error']['Message']})
         }
     except Exception as e:
         return {
             'statusCode': 500,
+            'headers': cors_headers,
             'body': json.dumps({"error_message": str(e)})
         }
