@@ -17,7 +17,7 @@ def lambda_handler(event, context):
         body_parameters = json.loads(event["body"])
         username = body_parameters.get('username')
         password = body_parameters.get('password')
-        new_password = body_parameters.get('new_password')
+        new_password = body_parameters.get('newPassword')  # Asegúrate de que el campo coincida con lo que se envía desde el cliente
 
         if not username or not password:
             return {
@@ -35,8 +35,14 @@ def lambda_handler(event, context):
             }
         )
 
-        # Manejar el desafío de cambio de contraseña
         if response.get('ChallengeName') == 'NEW_PASSWORD_REQUIRED':
+            if not new_password:
+                return {
+                    'statusCode': 400,
+                    'headers': cors_headers,
+                    'body': json.dumps({"error_message": "New password is required to complete the challenge"})
+                }
+
             session = response['Session']
             response = client.respond_to_auth_challenge(
                 ClientId=client_id,
@@ -48,6 +54,14 @@ def lambda_handler(event, context):
                 }
             )
 
+        # Obtener el rol del usuario
+        user = client.admin_get_user(UserPoolId=os.environ['USER_POOL_ID'], Username=username)
+        role = None
+        for attr in user['UserAttributes']:
+            if attr['Name'] == 'custom:role':
+                role = attr['Value']
+                break
+
         id_token = response['AuthenticationResult']['IdToken']
         access_token = response['AuthenticationResult']['AccessToken']
         refresh_token = response['AuthenticationResult']['RefreshToken']
@@ -58,7 +72,8 @@ def lambda_handler(event, context):
             'body': json.dumps({
                 'id_token': id_token,
                 'access_token': access_token,
-                'refresh_token': refresh_token
+                'refresh_token': refresh_token,
+                'role': role  # Incluir el rol en la respuesta
             })
         }
 

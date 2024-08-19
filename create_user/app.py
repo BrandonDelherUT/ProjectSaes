@@ -49,13 +49,14 @@ def lambda_handler(event, context):
         except client.exceptions.UserNotFoundException:
             pass  # El usuario no existe, podemos continuar con la creación
 
-        # Crea el usuario con correo no verificado y contraseña temporal que se envia automáticamente a su correo
+        # Crea el usuario con el atributo custom:role
         client.admin_create_user(
             UserPoolId=user_pool_id,
             Username=username,
             UserAttributes=[
                 {'Name': 'email', 'Value': email},
                 {'Name': 'email_verified', 'Value': 'false'},
+                {'Name': 'custom:role', 'Value': role}  # Añade el rol como atributo personalizado
             ],
             TemporaryPassword=password
         )
@@ -135,4 +136,3 @@ def generate_temporary_password(length=12):
 
         if has_digit and has_upper and has_lower and has_special and len(password) >= 8:
             return password
-
