@@ -80,7 +80,7 @@ def lambda_handler(event, context):
             GroupName=role
         )
 
-        # Inserta el usuario en la base de datos
+        # Inserta el usuario en la base de datos y registra el perfil
         insert_db(username, password, email, role)
 
         return {
@@ -105,7 +105,6 @@ def lambda_handler(event, context):
         }
 
 def insert_db(username, password, email, role):
-    query = f"INSERT INTO users (username, password, email, role) VALUES (%s, %s, %s, %s)"
     connection = connect_to_db(
         host=os.environ['RDS_ENDPOINT'],
         user=os.environ['RDS_USERNAME'],
@@ -114,8 +113,26 @@ def insert_db(username, password, email, role):
     )
     try:
         with connection.cursor() as cursor:
-            cursor.execute(query, (username, password, email, role))
+            # Inserta el usuario en la tabla de usuarios
+            user_insert_query = """
+                INSERT INTO users (username, password, email, role) 
+                VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(user_insert_query, (username, password, email, role))
             connection.commit()
+
+            # Obtén el user_id del usuario recién insertado
+            cursor.execute("SELECT LAST_INSERT_ID()")
+            user_id = cursor.fetchone()[0]
+
+            # Inserta un registro en la tabla profile con el user_id
+            profile_insert_query = """
+                INSERT INTO user_profiles (user_id) 
+                VALUES (%s)
+            """
+            cursor.execute(profile_insert_query, (user_id,))
+            connection.commit()
+
     finally:
         close_connection(connection)
 
