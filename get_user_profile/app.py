@@ -1,69 +1,59 @@
 import json
+import boto3
+from botocore.exceptions import ClientError
 import os
-import pymysql
-import logging
-from connection_bd import connect_to_db, close_connection
-
-# Configurar logging
-logging.basicConfig(level=logging.INFO)
+from jose import jwt
 
 def lambda_handler(event, context):
-    headers = {
-        'Access-Control-Allow-Origin': '*',  # Permite todas las fuentes
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'OPTIONS,GET',  # Métodos permitidos
+    # Configurar el cliente para DynamoDB
+    dynamodb = boto3.resource('dynamodb', region_name=os.environ['REGION_NAME'])
+    table = dynamodb.Table(os.environ['USER_PROFILES_TABLE_NAME'])
+
+    cors_headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
     }
 
-    # Obtener el UUID del usuario desde el path
-    user_id = event['pathParameters'].get('id')
-    logging.info(f"User ID received: {user_id}")
-
-    if user_id is None:
-        return {
-            "statusCode": 400,
-            "headers": headers,
-            "body": json.dumps({"message": "User ID is required."})
-        }
-
-    # Conectar a la base de datos
-    connection = connect_to_db(
-        host=os.environ['RDS_ENDPOINT'],
-        user=os.environ['RDS_USERNAME'],
-        password=os.environ['RDS_PASSWORD'],
-        database=os.environ['RDS_DB_NAME']
-    )
-
     try:
-        with connection.cursor(pymysql.cursors.DictCursor) as cursor:
-            # Cambiar el tipo de cursor a DictCursor para obtener resultados como un diccionario
-            query = "SELECT * FROM user_profiles WHERE user_id = %s"
-            cursor.execute(query, (user_id,))
-            user_profile = cursor.fetchone()
+        # Obtener el token de autorización del encabezado
+        authorization_header = event['headers']['Authorization']
+        token = authorization_header.split(' ')[1]
 
-            if user_profile:
-                return {
-                    "statusCode": 200,
-                    "headers": headers,
-                    "body": json.dumps({
-                        "user_id": user_profile['user_id'],
-                        "first_name": user_profile.get('first_name', ''),
-                        "last_name": user_profile.get('last_name', ''),
-                        "phone": user_profile.get('phone', ''),
-                        "address": user_profile.get('address', ''),
-                    })
-                }
-            else:
-                return {
-                    "statusCode": 404,
-                    "headers": headers,
-                    "body": json.dumps({"message": "User profile not found."})
-                }
-    except pymysql.MySQLError as e:
-        logging.error(f"MySQL error: {e}")
+        # Decodificar el token para obtener el user_id (sub)
+        user_info = jwt.get_unverified_claims(token)
+        user_id = user_info['sub']
+
+        # Obtener los datos del perfil del usuario desde DynamoDB
+        response = table.get_item(
+            Key={
+                'user_id': user_id
+            }
+        )
+
+        if 'Item' not in response:
+            return {
+                'statusCode': 404,
+                'headers': cors_headers,
+                'body': json.dumps({"error_message": "User profile not found"})
+            }
+
+        # Devolver la información del perfil del usuario
         return {
-            "statusCode": 500,
-            "headers": headers,
-            "body": json.dumps({"message": "Internal server error."})
+            'statusCode': 200,
+            'headers': cors_headers,
+            'body': json.dumps(response['Item'])
         }
-    finally:
-        close_connection(connection)
+
+    except ClientError as e:
+        return {
+            'statusCode': 500,
+            'headers': cors_headers,
+            'body': json.dumps({"error_message": e.response['Error']['Message']})
+        }
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'headers': cors_headers,
+            'body': json.dumps({"error_message": str(e)})
+        }

@@ -8,14 +8,14 @@ Globals:
     Timeout: 10
     MemorySize: 256
     Environment:
-        Variables:
-            RDS_USERNAME: admin
-            RDS_PASSWORD: SAESdb2024.
-            RDS_SECRET_NAME: prod/saes/Mysql
-            REGION_NAME: us-east-1
-            USER_POOL_ID: us-east-1_bUmZ4j6DU
-            RDS_DB_NAME: user_management
-            RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
+      Variables:
+        RDS_USERNAME: admin
+        RDS_PASSWORD: SAESdb2024.
+        RDS_SECRET_NAME: prod/saes/Mysql
+        REGION_NAME: us-east-1
+        USER_POOL_ID: us-east-1_bUmZ4j6DU
+        RDS_DB_NAME: user_management
+        RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
 
 Resources:
 
@@ -81,9 +81,11 @@ Resources:
       StageName: Prod
       Auth:
         Authorizers:
-          CognitoAuthorizer:
+          CognitoUserAuthorizer:  # Nombre del Authorizer
             UserPoolArn: arn:aws:cognito-idp:us-east-1:654654356618:userpool/us-east-1_bUmZ4j6DU
             IdentitySource: method.request.header.Authorization
+            ProviderARNs:
+              - arn:aws:cognito-idp:us-east-1:654654356618:userpool/us-east-1_bUmZ4j6DU
       Cors:
         AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
         AllowHeaders: "'Content-Type,Authorization'"
@@ -129,7 +131,7 @@ Resources:
             Path: /users/{id}
             Method: get
             Auth:
-              Authorizer: CognitoAuthorizer
+              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin
@@ -155,7 +157,7 @@ Resources:
             Path: /users/{id}
             Method: put
             Auth:
-              Authorizer: CognitoAuthorizer
+              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin
@@ -181,7 +183,7 @@ Resources:
             Path: /users/{id}
             Method: delete
             Auth:
-              Authorizer: CognitoAuthorizer
+              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin
@@ -224,10 +226,10 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /users/{id}/profile
+            Path: /users/profile
             Method: get
             Auth:
-              Authorizer: CognitoAuthorizer
+              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin

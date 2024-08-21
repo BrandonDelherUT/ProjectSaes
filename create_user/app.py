@@ -20,7 +20,6 @@ def lambda_handler(event, context):
 
     body_parameters = json.loads(event["body"])
     email = body_parameters.get('email')
-    username = email  # Usar el correo electrónico como nombre de usuario
     password = generate_temporary_password()
     role = "usuario"
 
@@ -40,7 +39,7 @@ def lambda_handler(event, context):
         try:
             client.admin_get_user(
                 UserPoolId=user_pool_id,
-                Username=username
+                Username=email
             )
             return {
                 'statusCode': 400,
@@ -50,10 +49,10 @@ def lambda_handler(event, context):
         except client.exceptions.UserNotFoundException:
             pass  # El usuario no existe, podemos continuar con la creación
 
-        # Crea el usuario con el atributo custom:role
-        client.admin_create_user(
+        # Crea el usuario con el atributo custom:role y el email como Username
+        response = client.admin_create_user(
             UserPoolId=user_pool_id,
-            Username=username,
+            Username=email,
             UserAttributes=[
                 {'Name': 'email', 'Value': email},
                 {'Name': 'email_verified', 'Value': 'false'},
@@ -61,6 +60,9 @@ def lambda_handler(event, context):
             ],
             TemporaryPassword=password
         )
+
+        # Recupera el cognito:username generado por Cognito (user_id en la base de datos)
+        cognito_username = response['User']['Username']
 
         # Verifica si el grupo 'usuario' existe
         try:
@@ -77,12 +79,12 @@ def lambda_handler(event, context):
 
         client.admin_add_user_to_group(
             UserPoolId=user_pool_id,
-            Username=username,
+            Username=email,
             GroupName=role
         )
 
         # Inserta el usuario en la base de datos y registra el perfil
-        insert_db(username, password, email, role)
+        insert_db(cognito_username, email, password, role)
 
         return {
             'statusCode': 200,
@@ -105,7 +107,7 @@ def lambda_handler(event, context):
             'body': json.dumps({"error_message": str(e)})
         }
 
-def insert_db(username, password, email, role):
+def insert_db(user_id, email, password, role):
     connection = connect_to_db(
         host=os.environ['RDS_ENDPOINT'],
         user=os.environ['RDS_USERNAME'],
@@ -114,15 +116,12 @@ def insert_db(username, password, email, role):
     )
     try:
         with connection.cursor() as cursor:
-            # Generar un UUID para el usuario
-            user_id = str(uuid.uuid4())
-
-            # Inserta el usuario en la tabla de usuarios con UUID
+            # Inserta el usuario en la tabla de usuarios con cognito_username como user_id
             user_insert_query = """
                 INSERT INTO users (user_id, username, password, email, role) 
                 VALUES (%s, %s, %s, %s, %s)
             """
-            cursor.execute(user_insert_query, (user_id, username, password, email, role))
+            cursor.execute(user_insert_query, (user_id, email, password, email, role))
             connection.commit()
 
             # Inserta un registro en la tabla profile con el user_id

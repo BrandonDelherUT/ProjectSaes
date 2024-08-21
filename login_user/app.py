@@ -57,10 +57,19 @@ def lambda_handler(event, context):
         # Obtener el rol del usuario
         user = client.admin_get_user(UserPoolId=os.environ['USER_POOL_ID'], Username=username)
         role = None
+        cognito_username = None  # Almacenar el user_id de cognito
         for attr in user['UserAttributes']:
             if attr['Name'] == 'custom:role':
                 role = attr['Value']
-                break
+            if attr['Name'] == 'sub':  # sub es el cognito:username (user_id)
+                cognito_username = attr['Value']
+
+        if not cognito_username:
+            return {
+                'statusCode': 500,
+                'headers': cors_headers,
+                'body': json.dumps({"error_message": "User ID (cognito:username) not found."})
+            }
 
         id_token = response['AuthenticationResult']['IdToken']
         access_token = response['AuthenticationResult']['AccessToken']
@@ -73,7 +82,8 @@ def lambda_handler(event, context):
                 'id_token': id_token,
                 'access_token': access_token,
                 'refresh_token': refresh_token,
-                'role': role  # Incluir el rol en la respuesta
+                'role': role,  # Incluir el rol en la respuesta
+                'user_id': cognito_username  # Incluir el cognito:username (user_id) en la respuesta
             })
         }
 
