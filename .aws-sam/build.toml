@@ -10,33 +10,6 @@ manifest_hash = "05ce5294c03c81c6c14bb4a8c4e6864d"
 packagetype = "Zip"
 functions = ["CreateUserFunction"]
 
-[function_build_definitions.c357362b-6ec3-4175-80a0-6b554285c79f]
-codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\get_user"
-runtime = "python3.9"
-architecture = "x86_64"
-handler = "get_user.lambda_handler"
-manifest_hash = "05ce5294c03c81c6c14bb4a8c4e6864d"
-packagetype = "Zip"
-functions = ["GetUserFunction"]
-
-[function_build_definitions.a4002a20-20be-4c2e-b8da-4c2353844ced]
-codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\update_user"
-runtime = "python3.9"
-architecture = "x86_64"
-handler = "update_user.lambda_handler"
-manifest_hash = "ecb02a0aa2cbc44e9a6f4e167610c7a3"
-packagetype = "Zip"
-functions = ["UpdateUserFunction"]
-
-[function_build_definitions.c0424091-a5a8-4998-bde4-9d5627302065]
-codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\delete_user"
-runtime = "python3.9"
-architecture = "x86_64"
-handler = "delete_user.lambda_handler"
-manifest_hash = "ecb02a0aa2cbc44e9a6f4e167610c7a3"
-packagetype = "Zip"
-functions = ["DeleteUserFunction"]
-
 [function_build_definitions.6ab1fd3d-c7eb-410b-98f0-3093ec9cc34e]
 codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\login_user"
 runtime = "python3.9"
@@ -46,22 +19,40 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["LoginUserFunction"]
 
-[function_build_definitions.4ae8ff81-c7d5-4f14-a8f8-cf2ec22808f0]
-codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\profile_user"
+[function_build_definitions.5658cd1e-410e-4c39-906a-daeb683159b9]
+codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\get_user_profile"
 runtime = "python3.9"
 architecture = "x86_64"
 handler = "app.lambda_handler"
-manifest_hash = ""
+manifest_hash = "05ce5294c03c81c6c14bb4a8c4e6864d"
 packagetype = "Zip"
-functions = ["ProfileUserFunction"]
+functions = ["GetUserProfileFunction"]
 
-[function_build_definitions.704eb4f9-c319-4b88-8c22-b8090e2e32ee]
-codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\profile_admin"
+[function_build_definitions.e81586df-dc66-4d95-a59f-e95393091530]
+codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\get_user"
 runtime = "python3.9"
 architecture = "x86_64"
 handler = "app.lambda_handler"
-manifest_hash = ""
+manifest_hash = "05ce5294c03c81c6c14bb4a8c4e6864d"
 packagetype = "Zip"
-functions = ["ProfileAdminFunction"]
+functions = ["GetUserFunction"]
+
+[function_build_definitions.90ca6ec9-68ab-47c5-8f48-c9b84537530e]
+codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\update_user"
+runtime = "python3.9"
+architecture = "x86_64"
+handler = "app.lambda_handler"
+manifest_hash = "ecb02a0aa2cbc44e9a6f4e167610c7a3"
+packagetype = "Zip"
+functions = ["UpdateUserFunction"]
+
+[function_build_definitions.ef13d7fb-069a-48bf-9aad-5e439c23ab96]
+codeuri = "C:\\Users\\BDelh\\PycharmProjects\\ProjectSaes\\delete_user"
+runtime = "python3.9"
+architecture = "x86_64"
+handler = "app.lambda_handler"
+manifest_hash = "ecb02a0aa2cbc44e9a6f4e167610c7a3"
+packagetype = "Zip"
+functions = ["DeleteUserFunction"]
 
 [layer_build_definitions]

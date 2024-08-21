@@ -7,9 +7,19 @@ Globals:
   Function:
     Timeout: 10
     MemorySize: 256
+    Environment:
+        Variables:
+            RDS_USERNAME: admin
+            RDS_PASSWORD: SAESdb2024.
+            RDS_SECRET_NAME: prod/saes/Mysql
+            REGION_NAME: us-east-1
+            USER_POOL_ID: us-east-1_bUmZ4j6DU
+            RDS_DB_NAME: user_management
+            RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
 
 Resources:
 
+  ### IAM Role for Lambda Functions ###
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -30,8 +40,15 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                  - secretsmanager:GetSecretValue
                 Resource: arn:aws:logs:*:*:*
+        - PolicyName: SecretsManagerAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: arn:aws:secretsmanager:us-east-1:654654356618:secret:prod/saes/*
         - PolicyName: RDSAccessPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -39,7 +56,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - rds-db:connect
-                Resource: "*"
+                Resource: arn:aws:rds:us-east-1:654654356618:db:saesdb
         - PolicyName: CognitoAccessPolicy
           PolicyDocument:
             Version: '2012-10-17'
@@ -56,6 +73,7 @@ Resources:
                   - cognito-idp:ListUsers
                 Resource: arn:aws:cognito-idp:us-east-1:654654356618:userpool/us-east-1_bUmZ4j6DU
 
+  ### API Gateway with Cognito Authentication ###
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
@@ -71,6 +89,7 @@ Resources:
         AllowHeaders: "'Content-Type,Authorization'"
         AllowOrigin: "'*'"
 
+  ### Lambda Functions ###
   CreateUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -87,13 +106,13 @@ Resources:
             Method: post
       Environment:
         Variables:
-          RDS_SECRET_NAME: secretsSAES
+          RDS_USERNAME: admin
+          RDS_PASSWORD: SAESdb2024.
+          RDS_SECRET_NAME: prod/saes/Mysql
           REGION_NAME: us-east-1
           USER_POOL_ID: us-east-1_bUmZ4j6DU
           RDS_DB_NAME: user_management
           RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
-          RDS_USERNAME: admin
-          RDS_PASSWORD: SAESdb2024.
 
   GetUserFunction:
     Type: AWS::Serverless::Function
@@ -109,11 +128,17 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /users/{id}
             Method: get
+            Auth:
+              Authorizer: CognitoAuthorizer
       Environment:
         Variables:
-          RDS_SECRET_NAME: secretsSAES
+          RDS_USERNAME: admin
+          RDS_PASSWORD: SAESdb2024.
+          RDS_SECRET_NAME: prod/saes/Mysql
           REGION_NAME: us-east-1
           RDS_DB_NAME: user_management
+          RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
+          USER_POOL_ID: us-east-1_bUmZ4j6DU
 
   UpdateUserFunction:
     Type: AWS::Serverless::Function
@@ -129,11 +154,17 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /users/{id}
             Method: put
+            Auth:
+              Authorizer: CognitoAuthorizer
       Environment:
         Variables:
-          RDS_SECRET_NAME: secretsSAES
+          RDS_USERNAME: admin
+          RDS_PASSWORD: SAESdb2024.
+          RDS_SECRET_NAME: prod/saes/Mysql
           REGION_NAME: us-east-1
           RDS_DB_NAME: user_management
+          RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
+          USER_POOL_ID: us-east-1_bUmZ4j6DU
 
   DeleteUserFunction:
     Type: AWS::Serverless::Function
@@ -149,11 +180,17 @@ Resources:
             RestApiId: !Ref ApiGateway
             Path: /users/{id}
             Method: delete
+            Auth:
+              Authorizer: CognitoAuthorizer
       Environment:
         Variables:
-          RDS_SECRET_NAME: secretsSAES
+          RDS_USERNAME: admin
+          RDS_PASSWORD: SAESdb2024.
+          RDS_SECRET_NAME: prod/saes/Mysql
           REGION_NAME: us-east-1
           RDS_DB_NAME: user_management
+          RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
+          USER_POOL_ID: us-east-1_bUmZ4j6DU
 
   LoginUserFunction:
     Type: AWS::Serverless::Function
@@ -175,47 +212,30 @@ Resources:
           USER_POOL_ID: us-east-1_bUmZ4j6DU
           CLIENT_ID: g9uctiai3rvu4g541qfvkn6q8
 
-  ProfileUserFunction:
+  GetUserProfileFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: profile_user/
+      CodeUri: get_user_profile/
       Handler: app.lambda_handler
       Runtime: python3.9
       Role: !GetAtt LambdaExecutionRole.Arn
       Events:
-        ProfileUser:
+        GetUserProfile:
           Type: Api
           Properties:
             RestApiId: !Ref ApiGateway
-            Path: /profile
-            Method: post
+            Path: /users/{id}/profile
+            Method: get
             Auth:
               Authorizer: CognitoAuthorizer
       Environment:
         Variables:
+          RDS_USERNAME: admin
+          RDS_PASSWORD: SAESdb2024.
+          RDS_SECRET_NAME: prod/saes/Mysql
           REGION_NAME: us-east-1
-          USER_POOL_ID: us-east-1_bUmZ4j6DU
-
-  ProfileAdminFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: profile_admin/
-      Handler: app.lambda_handler
-      Runtime: python3.9
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Events:
-        ProfileAdmin:
-          Type: Api
-          Properties:
-            RestApiId: !Ref ApiGateway
-            Path: /admin
-            Method: post
-            Auth:
-              Authorizer: CognitoAuthorizer
-      Environment:
-        Variables:
-          REGION_NAME: us-east-1
-          USER_POOL_ID: us-east-1_bUmZ4j6DU
+          RDS_DB_NAME: user_management
+          RDS_ENDPOINT: saesdb.c9gsy08uohy5.us-east-1.rds.amazonaws.com
 
 Outputs:
   ApiUrl:

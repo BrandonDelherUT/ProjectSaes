@@ -2,6 +2,7 @@ import json
 import os
 import random
 import string
+import uuid
 import boto3
 from botocore.exceptions import ClientError
 from connection_bd import connect_to_db, execute_query, close_connection
@@ -113,17 +114,16 @@ def insert_db(username, password, email, role):
     )
     try:
         with connection.cursor() as cursor:
-            # Inserta el usuario en la tabla de usuarios
-            user_insert_query = """
-                INSERT INTO users (username, password, email, role) 
-                VALUES (%s, %s, %s, %s)
-            """
-            cursor.execute(user_insert_query, (username, password, email, role))
-            connection.commit()
+            # Generar un UUID para el usuario
+            user_id = str(uuid.uuid4())
 
-            # Obtén el user_id del usuario recién insertado
-            cursor.execute("SELECT LAST_INSERT_ID()")
-            user_id = cursor.fetchone()[0]
+            # Inserta el usuario en la tabla de usuarios con UUID
+            user_insert_query = """
+                INSERT INTO users (user_id, username, password, email, role) 
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(user_insert_query, (user_id, username, password, email, role))
+            connection.commit()
 
             # Inserta un registro en la tabla profile con el user_id
             profile_insert_query = """

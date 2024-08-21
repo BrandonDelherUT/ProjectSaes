@@ -2,33 +2,52 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 import json
-from typing import Dict
-from connection_bd import connect_to_db, execute_query, close_connection
 import logging
+from connection_bd import connect_to_db, execute_query, close_connection
 
-# Configure logging
+# Configurar logging
 logging.basicConfig(level=logging.INFO)
 
-def lambda_handler(event, __):
+def lambda_handler(event, context):
+    logging.info("Lambda function 'get_user' has started")
+    logging.info(f"Event received: {json.dumps(event)}")
+
     # Obtener el ID del usuario desde el evento
     user_id = event['pathParameters'].get('id')
+    logging.info(f"User ID received: {user_id}")
 
-    if user_id is None:
+    # Verificar que user_id sea un número entero
+    if not user_id.isdigit():
+        logging.error("User ID is not a valid integer")
         return {
             "statusCode": 400,
-            "body": json.dumps({"message": "User ID is required."})
+            "headers": {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+            },
+            "body": json.dumps({"message": "User ID must be a valid integer."})
         }
 
     # Obtener credenciales de la base de datos desde AWS Secrets Manager
     secret_name = os.environ['RDS_SECRET_NAME']
-    region_name = os.environ['AWS_REGION']
+    region_name = os.environ['REGION_NAME']
+
     try:
+        logging.info(f"Retrieving secret '{secret_name}' from Secrets Manager")
         secret = get_secret(secret_name, region_name)
+        logging.info("Secret retrieved successfully")
     except ClientError as e:
+        logging.error(f"Failed to retrieve secret: {e}")
         return {
             'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+            },
             'body': json.dumps(
-                {'error': "An error occurred while processing the request get_secret"})
+                {'error': "An error occurred while retrieving database credentials"})
         }
 
     # Parámetros de conexión a la base de datos
@@ -36,53 +55,62 @@ def lambda_handler(event, __):
     user = secret['username']
     password = secret['password']
     database = os.environ['RDS_DB_NAME']
+    logging.info(f"Database connection parameters set: host={host}, database={database}")
 
-    # Consulta para seleccionar el usuario por ID
-    query = f"SELECT * FROM users WHERE user_id = {user_id}"
+    # Consulta para seleccionar el usuario por ID (usando parámetros)
+    query = "SELECT * FROM users WHERE user_id = %s"
+    logging.info(f"SQL query prepared")
 
     # Establecer conexión con la base de datos
-    connection = connect_to_db(host, user, password, database)
+    connection = None
+    try:
+        connection = connect_to_db(host, user, password, database)
+        logging.info("Database connection established successfully")
 
-    if connection:
-        try:
-            # Ejecutar la consulta
-            results = execute_query(connection, query)
-            # Cerrar la conexión
-            close_connection(connection)
+        # Ejecutar la consulta
+        logging.info(f"Executing query with user_id: {user_id}")
+        results = execute_query(connection, query, (user_id,))
+        logging.info(f"Query executed successfully, results: {results}")
 
-            if results:
-                # Si se obtienen resultados, registrarlos
-                logging.info("Results:")
-                for row in results:
-                    logging.info(row)
-
-                # Devolver respuesta exitosa con los datos
-                return {
-                    "statusCode": 200,
-                    "body": json.dumps({"data": results})
-                }
-            else:
-                # Devolver respuesta vacía si no se encuentran resultados
-                return {
-                    "statusCode": 204,
-                    "body": json.dumps({"message": "No results found."})
-                }
-        except Exception as e:
-            # Registrar y devolver respuesta de error
-            logging.error("Error executing query: %s", e)
+        if results:
+            logging.info("Returning successful response with user data")
             return {
-                "statusCode": 500,
-                "body": json.dumps({"error": "An error occurred while processing the request."})
+                "statusCode": 200,
+                "headers": {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+                },
+                "body": json.dumps({"data": results})
             }
-    else:
-        # Devolver respuesta de error si la conexión falla
-        logging.error("Connection to the database failed.")
+        else:
+            logging.info("No results found for the provided User ID")
+            return {
+                "statusCode": 404,
+                "headers": {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+                },
+                "body": json.dumps({"message": "No results found."})
+            }
+    except Exception as e:
+        logging.error(f"Error executing query or connecting to the database: {e}")
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": "Failed to connect to the database."})
+            "headers": {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+            },
+            "body": json.dumps({"error": "An error occurred while processing the request."})
         }
+    finally:
+        if connection:
+            close_connection(connection)
+            logging.info("Database connection closed successfully")
 
-def get_secret(secret_name: str, region_name: str) -> Dict[str, str]:
+def get_secret(secret_name: str, region_name: str) -> dict:
     """
     Retrieves the secret value from AWS Secrets Manager.
 
@@ -93,14 +121,17 @@ def get_secret(secret_name: str, region_name: str) -> Dict[str, str]:
     Returns:
         dict: The secret value retrieved from AWS Secrets Manager.
     """
-    # Crear cliente de Secrets Manager
+    logging.info(f"Creating a Secrets Manager client for region: {region_name}")
+
     session = boto3.session.Session()
     client = session.client(service_name='secretsmanager', region_name=region_name)
 
     try:
+        logging.info(f"Requesting secret '{secret_name}' from Secrets Manager")
         get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+        logging.info("Secret retrieved successfully from Secrets Manager")
     except ClientError as e:
-        logging.error("Failed to retrieve secret: %s", e)
+        logging.error(f"Failed to retrieve secret: {e}")
         raise e
 
     return json.loads(get_secret_value_response['SecretString'])
