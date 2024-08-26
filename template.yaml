@@ -81,7 +81,7 @@ Resources:
       StageName: Prod
       Auth:
         Authorizers:
-          CognitoUserAuthorizer:  # Nombre del Authorizer
+          CognitoAuthorizer:  # Nombre del Authorizer
             UserPoolArn: arn:aws:cognito-idp:us-east-1:654654356618:userpool/us-east-1_bUmZ4j6DU
             IdentitySource: method.request.header.Authorization
             ProviderARNs:
@@ -131,7 +131,7 @@ Resources:
             Path: /users/{id}
             Method: get
             Auth:
-              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
+              Authorizer: CognitoAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin
@@ -157,7 +157,7 @@ Resources:
             Path: /users/{id}
             Method: put
             Auth:
-              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
+              Authorizer: CognitoAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin
@@ -183,7 +183,7 @@ Resources:
             Path: /users/{id}
             Method: delete
             Auth:
-              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
+              Authorizer: CognitoAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin
@@ -229,7 +229,7 @@ Resources:
             Path: /users/profile
             Method: get
             Auth:
-              Authorizer: CognitoUserAuthorizer  # Utiliza el CognitoUserAuthorizer
+              Authorizer: CognitoAuthorizer  # Utiliza el CognitoUserAuthorizer
       Environment:
         Variables:
           RDS_USERNAME: admin

@@ -5,7 +5,7 @@ import string
 import uuid
 import boto3
 from botocore.exceptions import ClientError
-from connection_bd import connect_to_db, execute_query, close_connection
+from create_user.connection_bd import connect_to_db, execute_query, close_connection
 import logging
 
 # Configure logging
